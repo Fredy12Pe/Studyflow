@@ -25,9 +25,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
+        style={{ background: "linear-gradient(0deg, #001AFF 0%, #E0E3FF 100%)" }}
+      > 
+        {/* Mobile viewport */}
+        <div className="md:hidden min-h-screen flex items-start justify-center p-4">
+          <div className="w-full max-w-sm">{children}</div>
+        </div>
+
+        {/* Desktop/Tablet notice */}
+        <div className="hidden md:flex min-h-screen items-center justify-center p-8">
+          <div className="max-w-md text-center space-y-3">
+            <h1 className="text-2xl font-semibold">Studyflow is mobile-only</h1>
+            <p className="text-gray-600">Please open this app on your phone or resize the window below 768px width.</p>
+          </div>
+        </div>
       </body>
     </html>
   );

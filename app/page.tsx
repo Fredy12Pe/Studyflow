@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const [pdfText, setPdfText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
@@ -10,6 +12,11 @@ export default function Home() {
   const [aiOutput, setAiOutput] = useState<any>(null);
   const [loading, setLoading] = useState<{ pdf?: boolean; link?: boolean; gen?: boolean }>({});
   const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    const done = typeof window !== "undefined" && localStorage.getItem("onboardingCompleted");
+    if (!done) router.replace("/onboarding");
+  }, [router]);
 
   async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
     setError("");
@@ -73,8 +80,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex items-start justify-center p-6">
-      <main className="w-full max-w-2xl space-y-6">
+    <div className="min-h-screen">
+      <main className="w-full max-w-sm mx-auto space-y-6 p-2">
         <h1 className="text-2xl font-semibold">Studyflow</h1>
 
         {error && (
@@ -164,6 +171,16 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      {/* Temporary: quick access to onboarding screen */}
+      <button
+        type="button"
+        onClick={() => router.push("/onboarding?force=1")}
+        className="fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/90 text-black px-4 py-2 text-xs font-medium shadow-md active:scale-95"
+        aria-label="Open onboarding"
+      >
+        Open Onboarding
+      </button>
     </div>
   );
 }
