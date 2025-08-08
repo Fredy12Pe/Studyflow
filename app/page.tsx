@@ -1,103 +1,169 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [pdfText, setPdfText] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [aiOutput, setAiOutput] = useState<any>(null);
+  const [loading, setLoading] = useState<{ pdf?: boolean; link?: boolean; gen?: boolean }>({});
+  const [error, setError] = useState<string>("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    setError("");
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      setLoading((s) => ({ ...s, pdf: true }));
+      const res = await fetch("/api/parse-pdf", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to parse PDF");
+      setPdfText(data.text || "");
+    } catch (err: any) {
+      setError(err.message || "Error parsing PDF");
+    } finally {
+      setLoading((s) => ({ ...s, pdf: false }));
+    }
+  }
+
+  async function handleParseLink() {
+    setError("");
+    if (!linkUrl) return;
+    try {
+      setLoading((s) => ({ ...s, link: true }));
+      const res = await fetch("/api/parse-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkUrl })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to parse link");
+      setLinkTitle(data.title || "");
+      setLinkText(data.text || "");
+    } catch (err: any) {
+      setError(err.message || "Error parsing link");
+    } finally {
+      setLoading((s) => ({ ...s, link: false }));
+    }
+  }
+
+  async function handleGenerate() {
+    setError("");
+    const text = `${pdfText}\n\n${linkText}`.trim();
+    if (!text) return;
+    try {
+      setLoading((s) => ({ ...s, gen: true }));
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to generate");
+      setAiOutput(data.output || null);
+    } catch (err: any) {
+      setError(err.message || "Error generating output");
+    } finally {
+      setLoading((s) => ({ ...s, gen: false }));
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-start justify-center p-6">
+      <main className="w-full max-w-2xl space-y-6">
+        <h1 className="text-2xl font-semibold">Studyflow</h1>
+
+        {error && (
+          <div className="rounded-md border border-red-300 bg-red-50 text-red-700 p-3 text-sm">{error}</div>
+        )}
+
+        <section className="space-y-2">
+          <h2 className="font-medium">Upload PDF</h2>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handlePdfUpload}
+            className="block w-full text-sm file:mr-4 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-2 file:hover:bg-gray-50"
+          />
+          <div className="text-xs text-gray-500">{loading.pdf ? "Parsing PDF..." : pdfText ? "PDF text extracted" : ""}</div>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="font-medium">Paste Link</h2>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              placeholder="https://example.com/article"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <button
+              onClick={handleParseLink}
+              className="rounded-md bg-black text-white px-4 py-2 text-sm disabled:opacity-50"
+              disabled={!linkUrl || !!loading.link}
+            >
+              {loading.link ? "Parsing..." : "Parse"}
+            </button>
+          </div>
+          {linkTitle && <div className="text-sm text-gray-700">Title: {linkTitle}</div>}
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="font-medium">Generate AI Notes & Flashcards</h2>
+          <button
+            onClick={handleGenerate}
+            className="rounded-md bg-black text-white px-4 py-2 text-sm disabled:opacity-50"
+            disabled={!(pdfText || linkText) || !!loading.gen}
           >
-            Read our docs
-          </a>
-        </div>
+            {loading.gen ? "Generating..." : "Generate"}
+          </button>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="font-medium">Extracted Text Preview</h3>
+          <div className="rounded-md border p-3 text-sm max-h-64 overflow-auto whitespace-pre-wrap">
+            {(pdfText || linkText) ? (pdfText + (pdfText && linkText ? "\n\n" : "") + linkText) : (
+              <span className="text-gray-400">No text extracted yet.</span>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="font-medium">AI Output</h3>
+          <div className="rounded-md border p-3 text-sm space-y-4">
+            {aiOutput ? (
+              <div className="space-y-4">
+                {aiOutput.notes && (
+                  <div>
+                    <div className="font-semibold mb-1">Notes</div>
+                    <pre className="whitespace-pre-wrap text-sm">{aiOutput.notes}</pre>
+                  </div>
+                )}
+                {Array.isArray(aiOutput.flashcards) && aiOutput.flashcards.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="font-semibold">Flashcards</div>
+                    <ul className="space-y-2">
+                      {aiOutput.flashcards.map((fc: any, idx: number) => (
+                        <li key={idx} className="rounded border p-2">
+                          <div className="text-sm"><span className="font-medium">Q:</span> {fc.question}</div>
+                          <div className="text-sm"><span className="font-medium">A:</span> {fc.answer}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-400">No AI output yet.</span>
+            )}
+          </div>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
