@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
+import ThemeToggle from "./theme-toggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,14 +25,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors`}
-        style={{ background: "linear-gradient(0deg, #001AFF 0%, #E0E3FF 100%)" }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen transition-colors bg-[var(--app-bg)] text-[var(--text)]`}
       > 
+        {/* Set initial theme before hydration to avoid FOUC */}
+        <Script id="init-theme" strategy="beforeInteractive">
+          {`
+            try {
+              const stored = localStorage.getItem('theme');
+              const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              const theme = stored || (prefersDark ? 'dark' : 'light');
+              document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) { /* no-op */ }
+          `}
+        </Script>
+
         {/* Mobile viewport */}
-        <div className="md:hidden min-h-screen flex items-start justify-center p-4">
-          <div className="w-full max-w-sm">{children}</div>
+        <div className="md:hidden min-h-screen p-0 relative">
+          <ThemeToggle />
+          <div className="w-full">{children}</div>
         </div>
 
         {/* Desktop/Tablet notice */}

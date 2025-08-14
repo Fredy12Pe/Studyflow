@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens - light/dark via data-theme attribute on <html> */
+:root[data-theme="light"] {
+  --app-bg: #f6f7fb;
+  --text: #0b0f1a;
+  --text-muted: #5b6378;
+  --surface: #ffffff;
+  --surface-2: #f1f4fa;
+  --border: rgba(13, 18, 31, 0.12);
+  --primary: #1a3bff; /* indigo/blue */
+  --danger: #ff3b30;  /* pdf red */
+  --accent: #7c4dff;  /* purple */
+  --progress: #ff7a3b; /* orange */
+  --hero-gradient: radial-gradient(160% 120% at 0% -10%, #ff6a5c 0%, #6143ff 42%, #101526 75%);
+}
+
+:root[data-theme="dark"] {
+  --app-bg: #0b0d1b;
+  --text: #f4f6fb;
+  --text-muted: rgba(255, 255, 255, 0.72);
+  --surface: #12172a;
+  --surface-2: #0f1324;
+  --border: rgba(255, 255, 255, 0.14);
+  --primary: #3156ff;
+  --danger: #ff4d61;
+  --accent: #8b5cf6;
+  --progress: #ff9341;
+  --hero-gradient: radial-gradient(160% 120% at 0% -10%, #ff6a5c 0%, #5b37ff 42%, #0b0d1b 75%);
+}
+
+/* Default to user's OS preference on first paint */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: "Avenir", "Avenir Next", "Avenir Next LT Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Utility surfaces */
+.surface {
+  background: var(--surface);
+  color: var(--text);
 }
+
+.surface-2 {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.hero-gradient {
+  background-image: var(--hero-gradient);
+}
+
+.muted { color: var(--text-muted); }
+.border-token { border-color: var(--border); }
+.shadow-elev-1 { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+
+/* Neon dashed upload box */
+.neon-dashed {
+  border: 2px dashed var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+  background: linear-gradient(180deg, rgba(123, 97, 255, 0.12), rgba(0, 0, 0, 0));
+}
+

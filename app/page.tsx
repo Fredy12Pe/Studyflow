@@ -1,186 +1,135 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import AuthButton from '@/components/AuthButton';
+import UploadZone from '@/components/UploadZone';
+import LinkPaste from '@/components/LinkPaste';
 
-export default function Home() {
-  const router = useRouter();
-  const [pdfText, setPdfText] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkText, setLinkText] = useState("");
-  const [aiOutput, setAiOutput] = useState<any>(null);
-  const [loading, setLoading] = useState<{ pdf?: boolean; link?: boolean; gen?: boolean }>({});
-  const [error, setError] = useState<string>("");
-
-  useEffect(() => {
-    const done = typeof window !== "undefined" && localStorage.getItem("onboardingCompleted");
-    if (!done) router.replace("/onboarding");
-  }, [router]);
-
-  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    setError("");
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      setLoading((s) => ({ ...s, pdf: true }));
-      const res = await fetch("/api/parse-pdf", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to parse PDF");
-      setPdfText(data.text || "");
-    } catch (err: any) {
-      setError(err.message || "Error parsing PDF");
-    } finally {
-      setLoading((s) => ({ ...s, pdf: false }));
-    }
-  }
-
-  async function handleParseLink() {
-    setError("");
-    if (!linkUrl) return;
-    try {
-      setLoading((s) => ({ ...s, link: true }));
-      const res = await fetch("/api/parse-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: linkUrl })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to parse link");
-      setLinkTitle(data.title || "");
-      setLinkText(data.text || "");
-    } catch (err: any) {
-      setError(err.message || "Error parsing link");
-    } finally {
-      setLoading((s) => ({ ...s, link: false }));
-    }
-  }
-
-  async function handleGenerate() {
-    setError("");
-    const text = `${pdfText}\n\n${linkText}`.trim();
-    if (!text) return;
-    try {
-      setLoading((s) => ({ ...s, gen: true }));
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to generate");
-      setAiOutput(data.output || null);
-    } catch (err: any) {
-      setError(err.message || "Error generating output");
-    } finally {
-      setLoading((s) => ({ ...s, gen: false }));
-    }
-  }
+export default function Home(){
+  const [parsed, setParsed] = useState('');
+  const [notes, setNotes] = useState('');
+  const [cards, setCards] = useState<any[]>([]);
+  const [title, setTitle] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [mode, setMode] = useState<'pdf'|'link'>('pdf');
 
   return (
-    <div className="min-h-screen">
-      <main className="w-full max-w-sm mx-auto space-y-6 p-2">
-        <h1 className="text-2xl font-semibold">Studyflow</h1>
+    <main className="max-w-md mx-auto px-5 py-6 space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">StudyFlow</h1>
+        <AuthButton />
+      </div>
 
-        {error && (
-          <div className="rounded-md border border-red-300 bg-red-50 text-red-700 p-3 text-sm">{error}</div>
-        )}
+      <header className="rounded-3xl p-5 hero-gradient text-white shadow-lg">
+        <h2 className="text-xl font-semibold">Create Study Materials From:</h2>
 
-        <section className="space-y-2">
-          <h2 className="font-medium">Upload PDF</h2>
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={handlePdfUpload}
-            className="block w-full text-sm file:mr-4 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-2 file:hover:bg-gray-50"
-          />
-          <div className="text-xs text-gray-500">{loading.pdf ? "Parsing PDF..." : pdfText ? "PDF text extracted" : ""}</div>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="font-medium">Paste Link</h2>
-          <div className="flex gap-2">
-            <input
-              type="url"
-              placeholder="https://example.com/article"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-            />
-            <button
-              onClick={handleParseLink}
-              className="rounded-md bg-black text-white px-4 py-2 text-sm disabled:opacity-50"
-              disabled={!linkUrl || !!loading.link}
-            >
-              {loading.link ? "Parsing..." : "Parse"}
-            </button>
-          </div>
-          {linkTitle && <div className="text-sm text-gray-700">Title: {linkTitle}</div>}
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="font-medium">Generate AI Notes & Flashcards</h2>
+        {/* Segmented control */}
+        <div className="mt-5 flex gap-4">
           <button
-            onClick={handleGenerate}
-            className="rounded-md bg-black text-white px-4 py-2 text-sm disabled:opacity-50"
-            disabled={!(pdfText || linkText) || !!loading.gen}
+            type="button"
+            aria-pressed={mode==='pdf'}
+            onClick={()=>setMode('pdf')}
+            className="inline-flex items-center gap-2 rounded-[20px] px-5 py-3 text-base font-semibold shadow-elev-1"
+            style={{
+              background: mode==='pdf' ? 'var(--danger)' : 'rgba(255,255,255,0.1)',
+              color: mode==='pdf' ? '#ffffff' : 'rgba(255,255,255,0.7)'
+            }}
           >
-            {loading.gen ? "Generating..." : "Generate"}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" opacity=".2"/><path d="M14 2v6h6M8 13h8M8 17h5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            PDF
           </button>
-        </section>
+          <button
+            type="button"
+            aria-pressed={mode==='link'}
+            onClick={()=>setMode('link')}
+            className="inline-flex items-center gap-2 rounded-[20px] px-5 py-3 text-base font-semibold shadow-elev-1"
+            style={{
+              background: mode==='link' ? '#3b3f52' : 'rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.7)'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 1 7 0l1 1a5 5 0 0 1 0 7 5 5 0 0 1-7 0l-1-1"/><path d="M14 11a5 5 0 0 1-7 0l-1-1a5 5 0 0 1 0-7 5 5 0 0 1 7 0l1 1"/></svg>
+            Link
+          </button>
+        </div>
 
-        <section className="space-y-2">
-          <h3 className="font-medium">Extracted Text Preview</h3>
-          <div className="rounded-md border p-3 text-sm max-h-64 overflow-auto whitespace-pre-wrap">
-            {(pdfText || linkText) ? (pdfText + (pdfText && linkText ? "\n\n" : "") + linkText) : (
-              <span className="text-gray-400">No text extracted yet.</span>
-            )}
+        {/* Title input */}
+        <div className="mt-4">
+          <input
+            className="w-full rounded-2xl bg-[rgba(255,255,255,0.08)] border border-white/30 px-4 py-3 text-white placeholder:text-white/28"
+            placeholder="Add name for study set"
+            value={title}
+            onChange={(e)=>setTitle(e.target.value)}
+          />
+        </div>
+
+        {/* Upload zone or link paste based on mode */}
+        <div className="mt-4">
+          {mode==='pdf' ? (
+            <UploadZone onParsed={setParsed} variant="hero"/>
+          ) : (
+            <LinkPaste onParsed={setParsed} variant="hero"/>
+          )}
+        </div>
+
+        {/* Title + Create appears after text is parsed */}
+        {parsed && (
+          <div className="mt-4 grid gap-3">
+            <button
+              className="rounded-2xl px-5 py-3 font-semibold shadow-elev-1"
+              style={{ background: 'var(--primary)', color: '#fff' }}
+              disabled={creating}
+              onClick={async ()=>{
+                if(!parsed) return; setCreating(true);
+                try{
+                  const r = await fetch('/api/generate',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: parsed }) });
+                  const d = await r.json();
+                  setNotes(d.notes || '');
+                  setCards(d.flashcards || []);
+                } finally { setCreating(false); }
+              }}
+            >{creating? 'Creating…' : 'Create'}</button>
           </div>
-        </section>
+        )}
+      </header>
 
+      {/* Generation controls moved into the hero; nothing here */}
+
+      {notes && (
         <section className="space-y-2">
-          <h3 className="font-medium">AI Output</h3>
-          <div className="rounded-md border p-3 text-sm space-y-4">
-            {aiOutput ? (
-              <div className="space-y-4">
-                {aiOutput.notes && (
-                  <div>
-                    <div className="font-semibold mb-1">Notes</div>
-                    <pre className="whitespace-pre-wrap text-sm">{aiOutput.notes}</pre>
-                  </div>
-                )}
-                {Array.isArray(aiOutput.flashcards) && aiOutput.flashcards.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="font-semibold">Flashcards</div>
-                    <ul className="space-y-2">
-                      {aiOutput.flashcards.map((fc: any, idx: number) => (
-                        <li key={idx} className="rounded border p-2">
-                          <div className="text-sm"><span className="font-medium">Q:</span> {fc.question}</div>
-                          <div className="text-sm"><span className="font-medium">A:</span> {fc.answer}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span className="text-gray-400">No AI output yet.</span>
-            )}
-          </div>
+          <h3 className="font-semibold text-lg">Notes (preview)</h3>
+          <div className="rounded-xl border p-3 prose prose-sm max-w-none whitespace-pre-wrap bg-white">{notes}</div>
         </section>
-      </main>
+      )}
 
-      {/* Temporary: quick access to onboarding screen */}
-      <button
-        type="button"
-        onClick={() => router.push("/onboarding?force=1")}
-        className="fixed bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-white/90 text-black px-4 py-2 text-xs font-medium shadow-md active:scale-95"
-        aria-label="Open onboarding"
-      >
-        Open Onboarding
-      </button>
-    </div>
+      {cards?.length>0 && (
+        <section className="space-y-2">
+          <h3 className="font-semibold text-lg">Flashcards (preview)</h3>
+          <ul className="space-y-2">
+            {cards.map((c,i)=>(
+              <li key={i} className="rounded-xl border p-3 bg-white">
+                <div className="font-medium">{c.front}</div>
+                <div className="text-sm opacity-80">{c.back}</div>
+              </li>
+            ))}
+          </ul>
+          <button
+            className="mt-2 px-4 py-2 rounded-xl bg-emerald-600 text-white"
+            disabled={saving}
+            onClick={async ()=>{
+              setSaving(true);
+              const r = await fetch('/api/save',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ userId:'demo', title, notesMarkdown:notes, flashcards:cards })
+              });
+              const d = await r.json(); setSaving(false);
+              if(d.setId) window.location.href = `/sets/${d.setId}`;
+            }}
+          >{saving? 'Saving…' : 'Save Set'}</button>
+        </section>
+      )}
+    </main>
   );
 }

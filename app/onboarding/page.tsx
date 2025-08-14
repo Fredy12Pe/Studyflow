@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Onboarding() {
@@ -26,7 +27,15 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-end px-6 pb-12">
+    <div className="relative overflow-hidden min-h-screen flex flex-col items-center justify-end px-6 pb-20">
+      <Image
+        src="/Assets/Onboarding/Main%20Onboarding%20Image.png"
+        alt="Onboarding illustration"
+        width={440}
+        height={560}
+        priority
+        className="absolute top-0 -left-6 w-[440px] h-[560px] pointer-events-none select-none"
+      />
       <div className="w-full text-center flex flex-col items-center gap-3">
         <h1 className="text-white text-3xl font-bold leading-tight">
           Let’s Make Studying Easy
